@@ -35,7 +35,7 @@ if ( ! file.exists(here("data", basename(latest_xsls_url))) ){
                 destfile=here("data", basename(latest_xsls_url)))
   file.remove(here("data", "mwra_samples.xlsx"))
   file.symlink(
-     here("data", basename(latest_xsls_url)), 
+     basename(latest_xsls_url),
      here("data", "mwra_samples.xlsx")) }
 
 the_data = read_excel(
@@ -57,13 +57,16 @@ Chart the data, overlaid with a lame suggestive loess model.  Show twice, once l
 ```{r, fig.width = 5, fig.height = 5}
 theme_set(theme_minimal())
 
-p_linear <- samples %>% 
+p_basic <- samples %>% 
   group_by(key) %>% 
   ggplot(aes(x=date, y=rna, color=key, fill=key)) + 
   geom_point(size=1) + 
   geom_smooth(method="loess", formula= y ~ x, alpha=.1) +
-  theme(legend.position="top")
-p_log <- p_linear +  scale_y_log10() + theme(legend.position="none")
+  theme(legend.position="top") +
+  labs(subtitle="linear scale")
+p_linear <- p_basic + labs(title="MWRA waste water: covid rna counts")
+p_log <- p_basic +  scale_y_log10() + 
+  theme(legend.position="none") + labs(subtitle="log scale")
 grid.arrange(p_linear, p_log, nrow=2)
 # samples %>% autoplot()
 ```

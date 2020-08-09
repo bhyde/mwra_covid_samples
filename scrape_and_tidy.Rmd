@@ -1,0 +1,69 @@
+---
+title: "MWRA's data on RNA fragments of SARS-CoV-2 in the waste water."
+output: html_document
+---
+
+First, a disclaimer.  I know nothing.  I know little to nothing about: virology, epidemology, RStudio, ... the list goes on.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Install packages we use below, if necessary
+for(pkg in c("tidyverse", "urltools", "rvest", "here",
+             "feasts", "readxl", "gridExtra")){
+  if (!(pkg %in% installed.packages())) { install.packages(pkg)}}
+library(tidyverse)
+library(urltools)
+library(rvest)
+library(readxl)
+library(feasts)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(gridExtra)
+library(here)
+```
+Get the_data from the MWRA's web site.  Which requires extracting it from an excell file. The URL for that varies, so we scrape that URL out of the parent webpage.  We keep old versions, so we can refresh only when the URL changes.
+```{r}
+base_url = "http://www.mwra.com/biobot/"
+latest_xsls_url = (paste0(base_url, "biobotdata.htm") 
+                   %>% read_html()
+                   %>% html_node("p > u > a")
+                   %>% html_attr('href')
+                   %>% paste0(base_url, .) )
+if ( ! file.exists(here("data", basename(latest_xsls_url))) ){
+  download.file(url=latest_xsls_url, 
+                destfile=here("data", basename(latest_xsls_url)))
+  file.remove(here("data", "mwra_samples.xlsx"))
+  file.symlink(
+     here("data", basename(latest_xsls_url)), 
+     here("data", "mwra_samples.xlsx")) }
+
+the_data = read_excel(
+  here("data", "mwra_samples.xlsx"), 
+  sheet="N-S by Date")[c(1,2,3)]
+```
+Tidy up the data into a tsibble.  One sample in each row, key'd by the region (nothern or southern).
+```{r}
+colnames(the_data) <- c("date", "southern", "northern")
+samples = (bind_rows(
+ tibble(key="northern", date=the_data$date, rna=the_data$northern),
+ tibble(key="southern", date=the_data$date, rna=the_data$southern))
+ %>% drop_na()
+ %>% mutate(date=ymd(date))
+ %>% as_tsibble(key=key, index=date)
+ %>% arrange(date))
+```
+Chart the data, overlaid with a lame suggestive loess model.  Show twice, once linear and once log scale.  (I'm thinking (?) when an outbreak spreads is typical expodential on the way up.)
+```{r, fig.width = 5, fig.height = 5}
+theme_set(theme_minimal())
+
+p_linear <- samples %>% 
+  group_by(key) %>% 
+  ggplot(aes(x=date, y=rna, color=key, fill=key)) + 
+  geom_point(size=1) + 
+  geom_smooth(method="loess", formula= y ~ x, alpha=.1) +
+  theme(legend.position="top")
+p_log <- p_linear +  scale_y_log10() + theme(legend.position="none")
+grid.arrange(p_linear, p_log, nrow=2)
+# samples %>% autoplot()
+```

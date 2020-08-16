@@ -3,27 +3,30 @@ title: "MWRA's data on RNA fragments of SARS-CoV-2 in the waste water."
 output: html_document
 ---
 
-First, a disclaimer.  I know nothing.  I know little to nothing about: virology, epidemology, RStudio, ... the list goes on.
+First, a disclaimer.  I know nothing.  I know little to nothing about: virology, epidemology, RStudio, and so many other things.
+
+The Massachusetts Water Resources Agency or MWRA has a large sewage treatment facility the handles the sewage generted by much of the area around Boston.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 # Install packages we use below, if necessary
 for(pkg in c("tidyverse", "urltools", "rvest", "here",
-             "feasts", "readxl", "gridExtra")){
+             "feasts", "pdftools", "gridExtra")){
   if (!(pkg %in% installed.packages())) { install.packages(pkg)}}
 library(tidyverse)
+library(feasts)
 library(urltools)
 library(rvest)
-library(readxl)
-library(feasts)
+library(here)
+library(gt)
 library(lubridate)
 library(ggplot2)
 library(scales)
 library(gridExtra)
-library(here)
+library(pdftools)
 ```
 Get the_data from the MWRA's web site.  Which requires extracting it from an excell file. The URL for that varies, so we scrape that URL out of the parent webpage.  We keep old versions, so we can refresh only when the URL changes.
-```{r}
+```{r fetch_data}
 base_url = "http://www.mwra.com/biobot/"
 latest_xsls_url = (paste0(base_url, "biobotdata.htm") 
                    %>% read_html()
@@ -33,40 +36,51 @@ latest_xsls_url = (paste0(base_url, "biobotdata.htm")
 if ( ! file.exists(here("data", basename(latest_xsls_url))) ){
   download.file(url=latest_xsls_url, 
                 destfile=here("data", basename(latest_xsls_url)))
-  file.remove(here("data", "mwra_samples.xlsx"))
+  file.remove(here("data", "mwra_samples.pdf"))
   file.symlink(
      basename(latest_xsls_url),
-     here("data", "mwra_samples.xlsx")) }
+     here("data", "mwra_samples.pdf")) }
+```
+Extract the table from the PDF the MWRA provides.
+```{r extract_data}
+pdf <- pdf_text(here("data", "mwra_samples.pdf"))
 
-the_data = read_excel(
-  here("data", "mwra_samples.xlsx"), 
-  sheet="N-S by Date")[c(1,2,3)]
+lines <- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages, merge them, break into lines
+          %>% as_tibble                                     # enter the tidyverse
+          %>% filter(grepl('^ *\\d+/\\d+/\\d+ ',value))     # retain only the lines reporting samples on a date
+          %>% mutate(value=str_trim(value, side = "both"))  # we will split on space, but discard edge spaces
+          %>% mutate(value=str_replace(value, "               ", "            NA"))  # too clever way to fill
+          %>% mutate(value=str_replace(value, "(\\d)    (\\d)", "\\1 NA \\2"))       # in the empty celsl with
+          %>% mutate(value=str_replace(value, "^    (\\d)", "NA \\1"))               # NA.
+          %>% mutate(value=str_squish(value))
+          %>% separate(value, sep=" ", into=c("date","northern", "southern", "a", "b", "c", "d"), fill="right")
+          %>% select(date, northern, southern))             # discard the Excel computed averages
+gt(tail(lines, 10)) %>% tab_header(title="Last few dates with samples.") %>% tab_source_note("Some days some samples aren't available.")
 ```
-Tidy up the data into a tsibble.  One sample in each row, key'd by the region (nothern or southern).
-```{r}
-colnames(the_data) <- c("date", "southern", "northern")
-samples = (bind_rows(
- tibble(key="northern", date=the_data$date, rna=the_data$northern),
- tibble(key="southern", date=the_data$date, rna=the_data$southern))
- %>% drop_na()
- %>% mutate(date=ymd(date))
- %>% as_tsibble(key=key, index=date)
- %>% arrange(date))
+Convert the tibble of samples on a given date, into a tsibble of samples.  One per date and region.
+```{r infer_samples}
+samples = (  # Convert lines into a table of samples
+  bind_rows(
+   tibble(date=lines$date, region="northern", rna=lines$northern),
+   tibble(date=lines$date, region="southern", rna=lines$southern))
+  %>% mutate(rna=parse_integer(rna), date=mdy(date))
+  %>% drop_na() # dates with NA didn't have a sample for that region
+  %>% as_tsibble(key=region, index=date)
+  %>% arrange(date))
+gt(tail(samples, 10)) %>% tab_header(title="Last ten samples")
 ```
-Chart the data, overlaid with a lame suggestive loess model.  Show twice, once linear and once log scale.  (I'm thinking (?) when an outbreak spreads is typical expodential on the way up.)
-```{r, fig.width = 5, fig.height = 5}
+Chart the data, twice once linear and one log.  Overlaid with a loess curve.  Why?  Because it's easy.
+```{r plot_samples, fig.width = 5, fig.height = 5, include=TRUE}
 theme_set(theme_minimal())
-
-p_basic <- samples %>% 
-  group_by(key) %>% 
-  ggplot(aes(x=date, y=rna, color=key, fill=key)) + 
+p_linear <- (samples %>% 
+  group_by(region) %>% 
+  ggplot(aes(x=date, y=rna, color=region, fill=region)) + 
   geom_point(size=1) + 
-  geom_smooth(method="loess", formula= y ~ x, alpha=.1) +
+  geom_smooth(method="loess", formula= y ~ x, span = .2, alpha=.1) +
   theme(legend.position="top") +
-  labs(subtitle="linear scale")
-p_linear <- p_basic + labs(title="MWRA waste water: covid rna counts")
-p_log <- p_basic +  scale_y_log10() + 
-  theme(legend.position="none") + labs(subtitle="log scale")
-grid.arrange(p_linear, p_log, nrow=2)
-# samples %>% autoplot()
+  scale_x_date(date_breaks = "2 week", date_labels="%b %d") +
+  labs(subtitle="linear scale"))
+p_log <- (p_linear +  scale_y_log10() + 
+  theme(legend.position="none") + labs(subtitle="log scale") + geom_rug(sides="t"))
+grid.arrange(top="MWRA waste water: covid rna counts", p_linear, p_log)
 ```

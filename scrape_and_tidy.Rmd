@@ -3,9 +3,17 @@ title: "MWRA's data on RNA fragments of SARS-CoV-2 in the waste water."
 output: html_document
 ---
 
-First, a disclaimer.  I know nothing.  I know little to nothing about: virology, epidemology, RStudio, and so many other things.
+# Disclaimer
+Warning - amateur at work.  I know little to nothing about: virology, epidemology, RStudio, sewage treatment and so many other things.
 
-The Massachusetts Water Resources Agency or MWRA has a large sewage treatment facility the handles the sewage generted by much of the area around Boston.
+# See Also
+* [https://doi.org/10.1101/2020.06.15.20117747](doi:10.1101/2020.06.15.20117747) "SARS-CoV-2 titers in wastewater foreshadow dynamics and clinical presentation of new COVID-19 cases"  A preprint.
+* Github repo: :[https://github.com/bhyde/mwra_covid_samples](bhyde/mwra_covid_samples).
+
+# Introduction
+Scroll to the bottom to see the charts.  Most of this is the R code to load, scrape, clean, normalize the data.
+
+The Massachusetts Water Resources Agency or MWRA has a large sewage treatment facility (Deer Island) that handles the sewage generted by much of the area around Boston.  The inflow to this comes from two regions, north and south.  The Charles river divides these two.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -25,23 +33,26 @@ library(scales)
 library(gridExtra)
 library(pdftools)
 ```
-Get the_data from the MWRA's web site.  Which requires extracting it from an excell file. The URL for that varies, so we scrape that URL out of the parent webpage.  We keep old versions, so we can refresh only when the URL changes.
+# Fetch, extract, tidy, create time series
+## Fetch data: a pdf
+We get the_data from the ["http://www.mwra.com/biobot/"](biobot page at MWRA's web site).  The actual data is in a linked pdf, so we have to scrape the URL for that before fetching it.
 ```{r fetch_data}
 base_url = "http://www.mwra.com/biobot/"
-latest_xsls_url = (paste0(base_url, "biobotdata.htm") 
+latest_pdf_url = (paste0(base_url, "biobotdata.htm") 
                    %>% read_html()
                    %>% html_node("p > u > a")
                    %>% html_attr('href')
                    %>% paste0(base_url, .) )
-if ( ! file.exists(here("data", basename(latest_xsls_url))) ){
-  download.file(url=latest_xsls_url, 
+if ( ! file.exists(here("data", basename(latest_pdf_url))) ){
+  download.file(url=latest_pdf_url, 
                 destfile=here("data", basename(latest_xsls_url)))
   file.remove(here("data", "mwra_samples.pdf"))
   file.symlink(
      basename(latest_xsls_url),
      here("data", "mwra_samples.pdf")) }
 ```
-Extract the table from the PDF the MWRA provides.
+## Extract data: set of lines from a table
+We use pdftools::pdf_text to get the content of the PDF.  As usual it is a PIA to tidy that up.
 ```{r extract_data}
 pdf <- pdf_text(here("data", "mwra_samples.pdf"))
 
@@ -57,7 +68,7 @@ lines <- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages, me
           %>% select(date, northern, southern))             # discard the Excel computed averages
 gt(tail(lines, 10)) %>% tab_header(title="Last few dates with samples.") %>% tab_source_note("Some days some samples aren't available.")
 ```
-Convert the tibble of samples on a given date, into a tsibble of samples.  One per date and region.
+## Convert to Timeseries of samples
 ```{r infer_samples}
 samples = (  # Convert lines into a table of samples
   bind_rows(
@@ -69,8 +80,9 @@ samples = (  # Convert lines into a table of samples
   %>% arrange(date))
 gt(tail(samples, 10)) %>% tab_header(title="Last ten samples")
 ```
+# Display: some charts
 Chart the data, twice once linear and one log.  Overlaid with a loess curve.  Why?  Because it's easy.
-```{r plot_samples, fig.width = 5, fig.height = 5, include=TRUE}
+```{r plot_samples, fig.width = 6.5, fig.height = 7, include=TRUE}
 theme_set(theme_minimal())
 p_linear <- (samples %>% 
   group_by(region) %>% 

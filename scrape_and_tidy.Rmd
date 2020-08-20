@@ -45,10 +45,10 @@ latest_pdf_url = (paste0(base_url, "biobotdata.htm")
                    %>% paste0(base_url, .) )
 if ( ! file.exists(here("data", basename(latest_pdf_url))) ){
   download.file(url=latest_pdf_url, 
-                destfile=here("data", basename(latest_xsls_url)))
+                destfile=here("data", basename(latest_pdf_url)))
   file.remove(here("data", "mwra_samples.pdf"))
   file.symlink(
-     basename(latest_xsls_url),
+     basename(latest_pdf_url),
      here("data", "mwra_samples.pdf")) }
 ```
 ## Extract data: set of lines from a table

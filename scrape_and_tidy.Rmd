@@ -7,8 +7,8 @@ output: html_document
 Warning - amateur at work.  I know little to nothing about: virology, epidemology, RStudio, sewage treatment and so many other things.
 
 # See Also
-* [https://doi.org/10.1101/2020.06.15.20117747](doi:10.1101/2020.06.15.20117747) "SARS-CoV-2 titers in wastewater foreshadow dynamics and clinical presentation of new COVID-19 cases"  A preprint.
-* Github repo: :[https://github.com/bhyde/mwra_covid_samples](bhyde/mwra_covid_samples).
+* "SARS-CoV-2 titers in wastewater foreshadow dynamics and clinical presentation of new COVID-19 cases" [doi:10.1101/2020.06.15.20117747](https://doi.org/10.1101/2020.06.15.20117747) A preprint.
+* Github repo: [bhyde/mwra_covid_samples](https://github.com/bhyde/mwra_covid_samples).
 
 # Introduction
 Scroll to the bottom to see the charts.  Most of this is the R code to load, scrape, clean, normalize the data.

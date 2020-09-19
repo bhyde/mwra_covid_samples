@@ -3,7 +3,7 @@ name: Refesh from MWRA
 
 # Run this workflow ever time code is pushed to a branch
 # other than `main` in your repository
-on: {workflow_dispatch: {input: {}}}
+on: workflow_dispatch
 
 jobs:
   refresh_from_mwra:
@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - run: |
+      - run:
           set
           pwd
           Rscript -e 'library(rmarkdown); rmarkdown::render("scrape_and_tidy.Rmd", "scrape_and_tidy_foo.html")'

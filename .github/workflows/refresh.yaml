@@ -1,5 +1,6 @@
 # This is a github action.
 name: Refesh from MWRA
+branch: master
 
 # Run this workflow ever time code is pushed to a branch
 # other than `main` in your repository
@@ -12,11 +13,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: r-lib/actions/setup-r@v1
+      - uses: r-lib/actions/setup-r@master   # see https://github.com/r-lib/actions/tree/master/examples
       - uses: r-lib/actions/setup-pandoc@v1
-      - run: set
-      - run: pwd
-      - run: Rscript -e 'install.packages("rmarkdown")'
-      - run: Rscript -e 'library(rmarkdown); rmarkdown::render("scrape_and_tidy.Rmd")'
+      - uses: actions/cache@v1
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
+          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
+      - shell: bash
+        run: |
+          date
+          pwd
+          set
+      - shell: Rscript {0}
+        run: |
+          install.packages(c("rmarkdown", "readr", "devtools", "tidyverse", "urltools",
+                             "rvest", "here", "feasts", "pdftools", "gridExtra"))
+          library(rmarkdown); rmarkdown::render("scrape_and_tidy.Rmd")
 
 # That it.

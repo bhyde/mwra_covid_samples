@@ -1,0 +1,19 @@
+# This is a github action.
+name: Refesh from MWRA
+
+# Run this workflow ever time code is pushed to a branch
+# other than `main` in your repository
+on: workflow_dispatch
+
+jobs:
+  refresh_from_mwra:
+    # Name the Job
+    name: Refesh Covid data from MWRA
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          echo hello world
+
+# That it.

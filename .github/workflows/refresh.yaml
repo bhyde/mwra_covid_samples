@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: r-lib/actions/setup-r@master   # see https://github.com/r-lib/actions/tree/master/examples
+      - uses: r-lib/actions/setup-r@master  # see https://github.com/r-lib/actions/tree/master/examples
       - uses: r-lib/actions/setup-pandoc@v1
       - uses: actions/cache@v1
         with:

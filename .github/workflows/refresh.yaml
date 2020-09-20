@@ -1,5 +1,5 @@
 # This is a github action.
-name: Refesh from MWRA
+name: Refesh from SARS-Covid-19 RNA samples from MWRA
 
 # Run this workflow ever time code is pushed to a branch
 # other than `main` in your repository
@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: r-lib/actions/setup-r@master  # see https://github.com/r-lib/actions/tree/master/examples
+      - uses: r-lib/actions/setup-r@master   # see https://github.com/r-lib/actions/tree/master/examples
       - uses: r-lib/actions/setup-pandoc@v1
       - uses: actions/cache@v1
         with:

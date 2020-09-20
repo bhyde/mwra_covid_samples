@@ -24,10 +24,28 @@ jobs:
           date
           pwd
           set
-      - shell: Rscript {0}
+      - name: R depedencies
+        shell: Rscript {0}
         run: |
-          install.packages(c("rmarkdown", "readr", "devtools", "tidyverse", "urltools",
-                             "rvest", "here", "feasts", "pdftools", "gridExtra"))
+          install.packages(c("devtools", "remotes"))
+          remotes::install_deps(depenencies=TRUE)
+      - name: system dependencies
+        if: runner.os == 'Linux'
+        env:
+          RHUB_PLATFORM: :linux-x86_64-ubuntu-gcc
+        run: |
+          Rscript -e "remotes::install_github('r-hub/sysreq')"
+          sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
+          sudo -s eval "sysreqs"
+      - name: R depedencies
+        shell: Rscript {0}
+        run: |
+          install.packages(c("rmarkdown", "readr", "devtools", "tidyverse", "urltools"))
+          install.packages(c("rvest", "here", "feasts", "pdftools", "gridExtra", "remotes"))
+          remotes::install_deps(depenencies=TRUE)
+      - name: do it
+        shell: Rscript {0}
+        run: |
           library(rmarkdown); rmarkdown::render("scrape_and_tidy.Rmd")
 
 # That it.

@@ -24,7 +24,7 @@ jobs:
           date
           pwd
           set
-      - name: R depedencies
+      - name: R depedencies # Do i need to do this seperately?
         shell: Rscript {0}
         run: |
           install.packages(c("devtools", "remotes"))

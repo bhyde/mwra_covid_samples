@@ -1,5 +1,5 @@
 # This is a github action.
-name: Refesh from SARS-Covid-19 RNA samples from MWRA
+name: Refesh from MWRA
 
 # Run this workflow ever time code is pushed to a branch
 # other than `main` in your repository
@@ -24,28 +24,10 @@ jobs:
           date
           pwd
           set
-      - name: R depedencies # Do i need to do this seperately?
-        shell: Rscript {0}
+      - shell: Rscript {0}
         run: |
-          install.packages(c("devtools", "remotes"))
-          remotes::install_deps(depenencies=TRUE)
-      - name: system dependencies
-        if: runner.os == 'Linux'
-        env:
-          RHUB_PLATFORM: :linux-x86_64-ubuntu-gcc
-        run: |
-          Rscript -e "remotes::install_github('r-hub/sysreq')"
-          sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
-          sudo -s eval "sysreqs"
-      - name: R depedencies
-        shell: Rscript {0}
-        run: |
-          install.packages(c("rmarkdown", "readr", "devtools", "tidyverse", "urltools"))
-          install.packages(c("rvest", "here", "feasts", "pdftools", "gridExtra", "remotes"))
-          remotes::install_deps(depenencies=TRUE)
-      - name: do it
-        shell: Rscript {0}
-        run: |
+          install.packages(c("rmarkdown", "readr", "devtools", "tidyverse", "urltools",
+                             "rvest", "here", "feasts", "pdftools", "gridExtra"))
           library(rmarkdown); rmarkdown::render("scrape_and_tidy.Rmd")
 
 # That it.

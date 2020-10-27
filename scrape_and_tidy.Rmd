@@ -1,6 +1,8 @@
 ---
 title: "MWRA's data on RNA fragments of SARS-CoV-2 in the waste water."
-output: html_document
+output:
+  html_document:
+    code_folding: hide
 ---
 
 # Disclaimer
@@ -33,7 +35,6 @@ library(scales)
 library(gridExtra)
 library(pdftools)
 ```
-# Fetch, extract, tidy, create time series
 ## Fetch data: a pdf
 We get the_data from the ["http://www.mwra.com/biobot/"](biobot page at MWRA's web site).  The actual data is in a linked pdf, so we have to scrape the URL for that before fetching it.
 ```{r fetch_data}
@@ -52,7 +53,7 @@ if ( ! file.exists(here("data", basename(latest_pdf_url))) ){
      basename(latest_pdf_url),
      here("data", "mwra_samples.pdf")) }
 ```
-## Extract data: set of lines from a table
+## Extract: table of days with with samples fir each region
 We use pdftools::pdf_text to get the content of the PDF.  As usual it is a PIA to tidy that up.
 ```{r extract_data}
 pdf <- pdf_text(here("data", "mwra_samples.pdf"))
@@ -67,12 +68,13 @@ lines <- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages, me
           %>% mutate(value=str_squish(value))
           %>% separate(value, sep=" ", into=c("date","northern", "southern", "a", "b", "c", "d"), fill="right")
           %>% select(date, northern, southern))             # discard the Excel computed averages
+
 (gt(tail(lines, 6)) 
   %>% tab_header(title="Last few days.") 
   %>% tab_source_note("Samples are usually every day for both regions.")
   %>% tab_options(table.font.size=9, data_row.padding = px(2)))
 ```
-## Convert to Timeseries of samples
+Convert to Timeseries of samples, i.e. one sample per row.
 ```{r infer_samples}
 samples = (  # Convert lines into a table of samples
   bind_rows(
@@ -87,7 +89,7 @@ samples = (  # Convert lines into a table of samples
   %>% tab_options(table.font.size=9, 
                   data_row.padding = px(2)))
 ```
-# Display: some charts
+Display: some charts
 Chart the data, twice once linear and one log.  Overlaid with a loess curve.  Why?  Because it's easy.
 ```{r plot_samples, fig.width = 6.5, fig.height = 7, include=TRUE}
 theme_set(theme_minimal())

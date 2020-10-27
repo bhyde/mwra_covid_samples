@@ -188,6 +188,66 @@ window.buildTabsets = function(tocID) {
 };
 
 </script>
+<script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    show = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    if (show) div.addClass('in');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (show ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs code-folding-btn pull-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', show)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // update state of button on show/hide
+    div.on('hidden.bs.collapse', function () {
+      showCodeText.text('Code');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+    });
+  });
+
+}
+</script>
 <style type="text/css">.hljs-literal {
 color: #990073;
 }
@@ -343,6 +403,9 @@ summary {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -358,6 +421,14 @@ summary {
 
 
 <div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
 
 
 
@@ -381,9 +452,6 @@ summary {
 <h1>Introduction</h1>
 <p>Scroll to the bottom to see the charts. Most of this is the R code to load, scrape, clean, normalize the data.</p>
 <p>The Massachusetts Water Resources Agency or MWRA has a large sewage treatment facility (Deer Island) that handles the sewage generted by much of the area around Boston. The inflow to this comes from two regions, north and south. The Charles river divides these two.</p>
-</div>
-<div id="fetch-extract-tidy-create-time-series" class="section level1">
-<h1>Fetch, extract, tidy, create time series</h1>
 <div id="fetch-data-a-pdf" class="section level2">
 <h2>Fetch data: a pdf</h2>
 <p>We get the_data from the <a href="biobot%20page%20at%20MWRA&#39;s%20web%20site">“http://www.mwra.com/biobot/”</a>. The actual data is in a linked pdf, so we have to scrape the URL for that before fetching it.</p>
@@ -402,8 +470,8 @@ if ( ! file.exists(here(&quot;data&quot;, basename(latest_pdf_url))) ){
      basename(latest_pdf_url),
      here(&quot;data&quot;, &quot;mwra_samples.pdf&quot;)) }</code></pre>
 </div>
-<div id="extract-data-set-of-lines-from-a-table" class="section level2">
-<h2>Extract data: set of lines from a table</h2>
+<div id="extract-table-of-days-with-with-samples-fir-each-region" class="section level2">
+<h2>Extract: table of days with with samples fir each region</h2>
 <p>We use pdftools::pdf_text to get the content of the PDF. As usual it is a PIA to tidy that up.</p>
 <pre class="r"><code>pdf &lt;- pdf_text(here(&quot;data&quot;, &quot;mwra_samples.pdf&quot;))
 
@@ -417,6 +485,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
           %&gt;% mutate(value=str_squish(value))
           %&gt;% separate(value, sep=&quot; &quot;, into=c(&quot;date&quot;,&quot;northern&quot;, &quot;southern&quot;, &quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;), fill=&quot;right&quot;)
           %&gt;% select(date, northern, southern))             # discard the Excel computed averages
+
 (gt(tail(lines, 6)) 
   %&gt;% tab_header(title=&quot;Last few days.&quot;) 
   %&gt;% tab_source_note(&quot;Samples are usually every day for both regions.&quot;)
@@ -425,7 +494,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#cfgiwxkycs .gt_table {
+#mskqrmmjmz .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -450,7 +519,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-left-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_heading {
+#mskqrmmjmz .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -462,7 +531,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_title {
+#mskqrmmjmz .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -472,7 +541,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-bottom-width: 0;
 }
 
-#cfgiwxkycs .gt_subtitle {
+#mskqrmmjmz .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -482,13 +551,13 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-width: 0;
 }
 
-#cfgiwxkycs .gt_bottom_border {
+#mskqrmmjmz .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_col_headings {
+#mskqrmmjmz .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -503,7 +572,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_col_heading {
+#mskqrmmjmz .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -523,7 +592,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   overflow-x: hidden;
 }
 
-#cfgiwxkycs .gt_column_spanner_outer {
+#mskqrmmjmz .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -535,15 +604,15 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 4px;
 }
 
-#cfgiwxkycs .gt_column_spanner_outer:first-child {
+#mskqrmmjmz .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#cfgiwxkycs .gt_column_spanner_outer:last-child {
+#mskqrmmjmz .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#cfgiwxkycs .gt_column_spanner {
+#mskqrmmjmz .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -555,7 +624,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   width: 100%;
 }
 
-#cfgiwxkycs .gt_group_heading {
+#mskqrmmjmz .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -577,7 +646,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   vertical-align: middle;
 }
 
-#cfgiwxkycs .gt_empty_group_heading {
+#mskqrmmjmz .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -592,15 +661,15 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   vertical-align: middle;
 }
 
-#cfgiwxkycs .gt_from_md > :first-child {
+#mskqrmmjmz .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#cfgiwxkycs .gt_from_md > :last-child {
+#mskqrmmjmz .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#cfgiwxkycs .gt_row {
+#mskqrmmjmz .gt_row {
   padding-top: 2px;
   padding-bottom: 2px;
   padding-left: 5px;
@@ -619,7 +688,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   overflow-x: hidden;
 }
 
-#cfgiwxkycs .gt_stub {
+#mskqrmmjmz .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -631,7 +700,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-left: 12px;
 }
 
-#cfgiwxkycs .gt_summary_row {
+#mskqrmmjmz .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -641,7 +710,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 5px;
 }
 
-#cfgiwxkycs .gt_first_summary_row {
+#mskqrmmjmz .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -651,7 +720,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_grand_summary_row {
+#mskqrmmjmz .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -661,7 +730,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 5px;
 }
 
-#cfgiwxkycs .gt_first_grand_summary_row {
+#mskqrmmjmz .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -671,11 +740,11 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_striped {
+#mskqrmmjmz .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#cfgiwxkycs .gt_table_body {
+#mskqrmmjmz .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -684,7 +753,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-bottom-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_footnotes {
+#mskqrmmjmz .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -698,13 +767,13 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_footnote {
+#mskqrmmjmz .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#cfgiwxkycs .gt_sourcenotes {
+#mskqrmmjmz .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -718,46 +787,46 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#cfgiwxkycs .gt_sourcenote {
+#mskqrmmjmz .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#cfgiwxkycs .gt_left {
+#mskqrmmjmz .gt_left {
   text-align: left;
 }
 
-#cfgiwxkycs .gt_center {
+#mskqrmmjmz .gt_center {
   text-align: center;
 }
 
-#cfgiwxkycs .gt_right {
+#mskqrmmjmz .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#cfgiwxkycs .gt_font_normal {
+#mskqrmmjmz .gt_font_normal {
   font-weight: normal;
 }
 
-#cfgiwxkycs .gt_font_bold {
+#mskqrmmjmz .gt_font_bold {
   font-weight: bold;
 }
 
-#cfgiwxkycs .gt_font_italic {
+#mskqrmmjmz .gt_font_italic {
   font-style: italic;
 }
 
-#cfgiwxkycs .gt_super {
+#mskqrmmjmz .gt_super {
   font-size: 65%;
 }
 
-#cfgiwxkycs .gt_footnote_marks {
+#mskqrmmjmz .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
-<div id="cfgiwxkycs" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<div id="mskqrmmjmz" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
   <thead class="gt_header">
     <tr>
       <th colspan="3" class="gt_heading gt_title gt_font_normal" style>Last few days.</th>
@@ -811,7 +880,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
     </tr>
   </tfoot>
   
-</table></div> ## Convert to Timeseries of samples</p>
+</table></div> Convert to Timeseries of samples, i.e. one sample per row.</p>
 <pre class="r"><code>samples = (  # Convert lines into a table of samples
   bind_rows(
    tibble(date=lines$date, region=&quot;northern&quot;, rna=lines$northern),
@@ -828,7 +897,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
 }
 
-#tlwmzbcwbo .gt_table {
+#zysfgleakm .gt_table {
   display: table;
   border-collapse: collapse;
   margin-left: auto;
@@ -853,7 +922,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-left-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_heading {
+#zysfgleakm .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -865,7 +934,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_title {
+#zysfgleakm .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -875,7 +944,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-bottom-width: 0;
 }
 
-#tlwmzbcwbo .gt_subtitle {
+#zysfgleakm .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -885,13 +954,13 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-width: 0;
 }
 
-#tlwmzbcwbo .gt_bottom_border {
+#zysfgleakm .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_col_headings {
+#zysfgleakm .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -906,7 +975,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_col_heading {
+#zysfgleakm .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -926,7 +995,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   overflow-x: hidden;
 }
 
-#tlwmzbcwbo .gt_column_spanner_outer {
+#zysfgleakm .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -938,15 +1007,15 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 4px;
 }
 
-#tlwmzbcwbo .gt_column_spanner_outer:first-child {
+#zysfgleakm .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#tlwmzbcwbo .gt_column_spanner_outer:last-child {
+#zysfgleakm .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#tlwmzbcwbo .gt_column_spanner {
+#zysfgleakm .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -958,7 +1027,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   width: 100%;
 }
 
-#tlwmzbcwbo .gt_group_heading {
+#zysfgleakm .gt_group_heading {
   padding: 8px;
   color: #333333;
   background-color: #FFFFFF;
@@ -980,7 +1049,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   vertical-align: middle;
 }
 
-#tlwmzbcwbo .gt_empty_group_heading {
+#zysfgleakm .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -995,15 +1064,15 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   vertical-align: middle;
 }
 
-#tlwmzbcwbo .gt_from_md > :first-child {
+#zysfgleakm .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#tlwmzbcwbo .gt_from_md > :last-child {
+#zysfgleakm .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#tlwmzbcwbo .gt_row {
+#zysfgleakm .gt_row {
   padding-top: 2px;
   padding-bottom: 2px;
   padding-left: 5px;
@@ -1022,7 +1091,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   overflow-x: hidden;
 }
 
-#tlwmzbcwbo .gt_stub {
+#zysfgleakm .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1034,7 +1103,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-left: 12px;
 }
 
-#tlwmzbcwbo .gt_summary_row {
+#zysfgleakm .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1044,7 +1113,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 5px;
 }
 
-#tlwmzbcwbo .gt_first_summary_row {
+#zysfgleakm .gt_first_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1054,7 +1123,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_grand_summary_row {
+#zysfgleakm .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1064,7 +1133,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   padding-right: 5px;
 }
 
-#tlwmzbcwbo .gt_first_grand_summary_row {
+#zysfgleakm .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1074,11 +1143,11 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-top-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_striped {
+#zysfgleakm .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#tlwmzbcwbo .gt_table_body {
+#zysfgleakm .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1087,7 +1156,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-bottom-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_footnotes {
+#zysfgleakm .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1101,13 +1170,13 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_footnote {
+#zysfgleakm .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding: 4px;
 }
 
-#tlwmzbcwbo .gt_sourcenotes {
+#zysfgleakm .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1121,46 +1190,46 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   border-right-color: #D3D3D3;
 }
 
-#tlwmzbcwbo .gt_sourcenote {
+#zysfgleakm .gt_sourcenote {
   font-size: 90%;
   padding: 4px;
 }
 
-#tlwmzbcwbo .gt_left {
+#zysfgleakm .gt_left {
   text-align: left;
 }
 
-#tlwmzbcwbo .gt_center {
+#zysfgleakm .gt_center {
   text-align: center;
 }
 
-#tlwmzbcwbo .gt_right {
+#zysfgleakm .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#tlwmzbcwbo .gt_font_normal {
+#zysfgleakm .gt_font_normal {
   font-weight: normal;
 }
 
-#tlwmzbcwbo .gt_font_bold {
+#zysfgleakm .gt_font_bold {
   font-weight: bold;
 }
 
-#tlwmzbcwbo .gt_font_italic {
+#zysfgleakm .gt_font_italic {
   font-style: italic;
 }
 
-#tlwmzbcwbo .gt_super {
+#zysfgleakm .gt_super {
   font-size: 65%;
 }
 
-#tlwmzbcwbo .gt_footnote_marks {
+#zysfgleakm .gt_footnote_marks {
   font-style: italic;
   font-size: 65%;
 }
 </style>
-<div id="tlwmzbcwbo" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
+<div id="zysfgleakm" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;"><table class="gt_table">
   <thead class="gt_header">
     <tr>
       <th colspan="3" class="gt_heading gt_title gt_font_normal" style>Last few samples.</th>
@@ -1210,7 +1279,7 @@ lines &lt;- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages,
   </tbody>
   
   
-</table></div> # Display: some charts Chart the data, twice once linear and one log. Overlaid with a loess curve. Why? Because it’s easy.</p>
+</table></div> Display: some charts Chart the data, twice once linear and one log. Overlaid with a loess curve. Why? Because it’s easy.</p>
 <pre class="r"><code>theme_set(theme_minimal())
 p_linear &lt;- (samples %&gt;% 
   group_by(region) %&gt;% 
@@ -1262,6 +1331,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

@@ -38,11 +38,12 @@ library(pdftools)
 We get the_data from the ["http://www.mwra.com/biobot/"](biobot page at MWRA's web site).  The actual data is in a linked pdf, so we have to scrape the URL for that before fetching it.
 ```{r fetch_data}
 base_url = "http://www.mwra.com/biobot/"
-latest_pdf_url = (paste0(base_url, "biobotdata.htm") 
-                   %>% read_html()
-                   %>% html_node("p > u > a")
-                   %>% html_attr('href')
-                   %>% paste0(base_url, .) )
+latest_report_url = paste0(base_url, "biobotdata.htm") 
+latest_pdf_url =( latest_report_url
+                  %>% read_html()
+                  %>% html_node('a[href$="data.pdf"]')
+                  %>% html_attr('href')
+                  %>% paste0(base_url, .) )
 if ( ! file.exists(here("data", basename(latest_pdf_url))) ){
   download.file(url=latest_pdf_url, 
                 destfile=here("data", basename(latest_pdf_url)))
@@ -66,7 +67,10 @@ lines <- (read_lines(reduce(pdf[1:length(pdf)], paste0))    # pdf is N pages, me
           %>% mutate(value=str_squish(value))
           %>% separate(value, sep=" ", into=c("date","northern", "southern", "a", "b", "c", "d"), fill="right")
           %>% select(date, northern, southern))             # discard the Excel computed averages
-gt(tail(lines, 10)) %>% tab_header(title="Last few dates with samples.") %>% tab_source_note("Some days some samples aren't available.")
+(gt(tail(lines, 6)) 
+  %>% tab_header(title="Last few days.") 
+  %>% tab_source_note("Samples are usually every day for both regions.")
+  %>% tab_options(table.font.size=9, data_row.padding = px(2)))
 ```
 ## Convert to Timeseries of samples
 ```{r infer_samples}
@@ -78,7 +82,10 @@ samples = (  # Convert lines into a table of samples
   %>% drop_na() # dates with NA didn't have a sample for that region
   %>% as_tsibble(key=region, index=date)
   %>% arrange(date))
-gt(tail(samples, 10)) %>% tab_header(title="Last ten samples")
+(gt(tail(samples, 6)) 
+  %>% tab_header(title="Last few samples.")
+  %>% tab_options(table.font.size=9, 
+                  data_row.padding = px(2)))
 ```
 # Display: some charts
 Chart the data, twice once linear and one log.  Overlaid with a loess curve.  Why?  Because it's easy.
@@ -90,6 +97,8 @@ p_linear <- (samples %>%
   geom_point(size=1) + 
   geom_smooth(method="loess", formula= y ~ x, span = .2, alpha=.1) +
   theme(legend.position="top") +
+  theme(axis.text.x = element_text(angle = 30, vjust=1, hjust=1)) +
+  theme(axis.title.x=element_blank()) +
   scale_x_date(date_breaks = "2 week", date_labels="%b %d") +
   labs(subtitle="linear scale"))
 p_log <- (p_linear +  scale_y_log10() + 

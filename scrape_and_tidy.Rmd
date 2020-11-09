@@ -37,11 +37,11 @@ The MWRA releases fresh data about once a week (["http://www.mwra.com/biobot/bio
 # The html page links to a pdf, who's url changes.  That contains a table of data.
 base_url = "http://www.mwra.com/biobot/"
 latest_report_url = paste0(base_url, "biobotdata.htm") 
-latest_pdf_url =( latest_report_url
-                  %>% read_html()
-                  %>% html_node('a[href$="data.pdf"]')
-                  %>% html_attr('href')
-                  %>% paste0(base_url, .) )
+latest_html = (latest_report_url %>% read_html())
+latest_pdf_url = ( latest_html
+                   %>% html_node('a[href*="NSdata"]')
+                   %>% html_attr('href')
+                   %>% paste0(base_url, .) )
 if ( ! file.exists(here("data", basename(latest_pdf_url))) ){
   download.file(url=latest_pdf_url, 
                 destfile=here("data", basename(latest_pdf_url)))
